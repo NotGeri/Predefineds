@@ -51,7 +51,18 @@ const reset = () => {
 };
 
 const generate = () => {
-    results.value = defaultScript.replace(/%options%/g, JSON.stringify(options.value)
+    if (!options.value) return;
+    const formattedOptions: Array<Option> = [];
+    for (const option of options.value) {
+        formattedOptions.push({
+            id: option.id,
+            text: option.text?.replace(/\n/g, '\\n'),
+            name: option.name,
+            colour: option.colour
+        });
+    }
+
+    results.value = DEFAULT_SCRIPT.replace(/%options%/g, JSON.stringify(formattedOptions)
         ?.replace(/'/g, "\\'")
         ?.replace(/\\"/g, '\\\\"')
     );
