@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {ref} from 'vue';
-import {DEFAULT_SCRIPT, PREDEFINEDS} from '@/config';
+import {DEFAULT_SCRIPT, OPTIONS_REGEX, PREDEFINEDS} from '@/config';
 
 type Option = {
     id?: string
@@ -21,15 +21,15 @@ const options = ref<Array<Option> | null>(null);
 const results = ref<string | null>(null);
 const copied = ref<boolean>(false);
 
-const useDefault = () => {
-    script.value = DEFAULT_SCRIPT?.replace(/%options%/g, '[]');
-};
-
-const optionsRegex = /const options = JSON\.parse\('(?<options>.*?)'\);/igm;
+/**
+ * Parse the script from the top textbox
+ * We only really care about the options, so we'll
+ * grab them with regex and parse them as JSON
+ */
 const parse = () => {
-    optionsRegex.lastIndex = 0;
+    OPTIONS_REGEX.lastIndex = 0;
 
-    const rawOptions = optionsRegex.exec(script.value)?.groups?.options ?? '[]';
+    const rawOptions = OPTIONS_REGEX.exec(script.value)?.groups?.options ?? '[]';
     let parsedOptions;
     try {
         parsedOptions = JSON.parse(rawOptions);
@@ -60,12 +60,19 @@ const parse = () => {
     }
 };
 
+/**
+ * Reset all options, results and errors
+ */
 const reset = () => {
     error.value = null;
     results.value = null;
-    options.value = null
+    options.value = null;
 };
 
+/**
+ * Transform the options and generate
+ * the final Tampermonkey script
+ */
 const generate = () => {
     if (!options.value) return;
     const formattedOptions: Array<Option> = [];
@@ -85,6 +92,10 @@ const generate = () => {
     );
 }
 
+/**
+ * Attempt to copy the final output and
+ * manage the state of the button
+ */
 const copy = () => {
     if (!results.value || !navigator?.clipboard?.writeText) return;
     navigator.clipboard.writeText(results.value).then(() => {
@@ -95,6 +106,11 @@ const copy = () => {
     });
 };
 
+/**
+ * Reorder an option
+ * @param index The index of the option
+ * @param direction The direction to reorder it in
+ */
 const reorder = (index: number, direction: 'up' | 'down') => {
     if (!options.value) return;
     if (direction == 'up') {
@@ -110,6 +126,11 @@ const reorder = (index: number, direction: 'up' | 'down') => {
     }
 };
 
+/**
+ * Update the name of an option
+ * @param index The index of the option
+ * @param event The InputEvent that triggered the rename
+ */
 const updateName = (index: number, event: Event) => {
     if (!options.value) return;
     if (event instanceof InputEvent) {
@@ -119,11 +140,20 @@ const updateName = (index: number, event: Event) => {
         }
     }
 };
+
+/**
+ * Update the type of an option
+ * @param index The index of the option
+ * @param event The InputEvent that triggered the update
+ */
+const updateType = (index: number, event: Event) => {
+    if (!options.value) return;
+    if (options.value[index].type == 'text') options.value[index].type = 'id';
+    else options.value[index].type = 'text';
+}
 </script>
 
 <template>
-    <span>https://fontawesome.com/v5/search?o=r&m=free</span>
-
     <h1 class="text-center m-3">Enter your entire existing script:</h1>
     <textarea v-model="script"
               @change="reset"
@@ -135,7 +165,7 @@ const updateName = (index: number, event: Event) => {
     <span v-if="error" class="text-red-400 mb-3">{{ error }}</span>
 
     <div class="flex flex-row gap-3">
-        <button class="btn primary" @click="useDefault">
+        <button class="btn primary" @click="script = DEFAULT_SCRIPT?.replace(/%options%/g, '[]');">
             <i class="fa-solid fa-code"></i>
             Default
         </button>
@@ -162,7 +192,7 @@ const updateName = (index: number, event: Event) => {
                 <span contenteditable
                       class="btn btn-secondary w-max pr-3 pl-3 h-10 leading-7 whitespace-pre max-w-xs overflow-hidden"
                       :style="{'background-color': options[index].colour}"
-                      @input="event => updateName(index, event)">
+                      @blur="event => updateName(index, event)">
                     {{ options[index].name }}</span>
 
                 <input v-model="options[index].colour"
@@ -174,7 +204,7 @@ const updateName = (index: number, event: Event) => {
                 <label class="toggle-label">
                     <input type="checkbox"
                            :checked="options[index].type == 'text'"
-                           @change="options[index].type == 'text' ? options[index].type = 'id' : options[index].type = 'text'">
+                           @change="event => updateType(index, event)">
                     <div class="toggle"></div>
                 </label>
 
@@ -234,6 +264,7 @@ const updateName = (index: number, event: Event) => {
                   rows="30"
                   class="mt-3 w-full">
         </textarea>
+
         <button class="btn primary mt-3" @click="copy">
             <i class="fa-solid fa-copy"></i>
             {{ !copied ? 'Copy' : 'Copied!' }}
