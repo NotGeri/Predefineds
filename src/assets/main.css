@@ -16,11 +16,11 @@
     }
 
     textarea, input {
-        @apply block p-2.5 bg-darker rounded-lg border border-gray-300 text-xs text-white tracking-widest focus:border-muted
+        @apply block p-2.5 bg-darker rounded-lg border border-gray-300 text-xs text-white tracking-widest focus:border-muted w-full
     }
 
     select {
-        @apply bg-darker text-white border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-muted block w-full p-2.5;
+        @apply bg-darker text-white border border-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-muted block p-2.5 w-full h-full;
     }
 
     input[type=color] {
@@ -90,6 +90,34 @@
     .danger {
         --btn-bg: #f04747;
         --btn-bg-hover: #CE3232;
+    }
+
+    .toggle {
+        background-color: #45474e;
+        @apply w-11 h-6 rounded-full;
+        @apply after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600;
+    }
+
+    .toggle:focus {
+        @apply outline-none ring-4 ring-blue-300;
+        @apply dark:ring-blue-800;
+    }
+
+    .toggle-label input:checked ~ .toggle {
+        background-color: #5865f2;
+    }
+
+    .toggle-label input:checked ~ .toggle::after {
+        transform: translateX(100%);
+        border-color: white;
+    }
+
+    .toggle-label input {
+        @apply sr-only;
+    }
+
+    .toggle-label {
+        @apply relative inline-flex items-center cursor-pointer;
     }
 
 }

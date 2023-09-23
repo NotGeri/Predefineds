@@ -7,6 +7,7 @@ type Option = {
     text?: string
     name?: string
     colour?: string
+    type: 'id' | 'text'
 };
 
 export type Predefined = {
@@ -41,7 +42,22 @@ const parse = () => {
     }
 
     options.value = [];
-    options.value.push(...parsedOptions)
+    for (const option of parsedOptions as Array<Option>) {
+        // If we don't specify a type, set one here
+        if (!option.type) {
+            if (option.text && option.text?.length > 0) option.type = 'text';
+            else option.type = 'id';
+        }
+
+        // If the colour isn't a full hex, add some padding
+        if (option.colour && option.colour.startsWith('#') && option.colour.length < 6) {
+            while (option.colour.length < 6) {
+                option.colour += '0';
+            }
+        }
+
+        options.value.push(option);
+    }
 };
 
 const reset = () => {
@@ -55,9 +71,10 @@ const generate = () => {
     const formattedOptions: Array<Option> = [];
     for (const option of options.value) {
         formattedOptions.push({
+            type: option.type,
             id: option.id,
             text: option.text?.replace(/\n/g, '\\n'),
-            name: option.name,
+            name: option.name?.replace(/\n/g, '\\n'),
             colour: option.colour
         });
     }
@@ -78,9 +95,35 @@ const copy = () => {
     });
 };
 
+const reorder = (index: number, direction: 'up' | 'down') => {
+    if (!options.value) return;
+    if (direction == 'up') {
+        if (index <= 0) return; // Check for the first element
+        const temp = options.value[index];
+        options.value[index] = options.value[index - 1];
+        options.value[index - 1] = temp;
+    } else {
+        if (index >= options.value.length - 1) return; // Check for the last element
+        const temp = options.value[index];
+        options.value[index] = options.value[index + 1];
+        options.value[index + 1] = temp;
+    }
+};
+
+const updateName = (index: number, event: Event) => {
+    if (!options.value) return;
+    if (event instanceof InputEvent) {
+        const name = (event.currentTarget as HTMLElement).textContent;
+        if (name != null) {
+            options.value[index].name = name;
+        }
+    }
+};
 </script>
 
 <template>
+    <span>https://fontawesome.com/v5/search?o=r&m=free</span>
+
     <h1 class="text-center m-3">Enter your entire existing script:</h1>
     <textarea v-model="script"
               @change="reset"
@@ -109,14 +152,34 @@ const copy = () => {
     </div>
 
     <div v-if="options">
-        <div class="mt-10 grid grid-cols-5 gap-x-5 gap-y-5 text-center justify-items-center items-center align-middle">
-            <template v-for="header in ['Predefined ID', 'Custom Text', 'Name', 'Colour', '']">
-                <h1 class="mb-3">{{ header }}</h1>
+        <div
+            class="mt-10 grid grid-cols-[10fr_5fr_5fr_65fr_10fr] gap-x-7 gap-y-10 text-center justify-items-center items-center whitespace-nowrap">
+            <template v-for="header in ['Name', 'Colour', 'Custom', 'Content', '']">
+                <h3 v-if="options.length > 0">{{ header }}</h3>
             </template>
 
             <template v-for="(option, index) in options" :key="index">
+                <span contenteditable
+                      class="btn btn-secondary w-max pr-3 pl-3 h-10 leading-7 whitespace-pre max-w-xs overflow-hidden"
+                      :style="{'background-color': options[index].colour}"
+                      @input="event => updateName(index, event)">
+                    {{ options[index].name }}</span>
 
-                <select v-model="options[index].id">
+                <input v-model="options[index].colour"
+                       type="color"
+                       class="w-10 h-10"
+                       placeholder="Button colour"/>
+
+                <!-- The checkbox -->
+                <label class="toggle-label">
+                    <input type="checkbox"
+                           :checked="options[index].type == 'text'"
+                           @change="options[index].type == 'text' ? options[index].type = 'id' : options[index].type = 'text'">
+                    <div class="toggle"></div>
+                </label>
+
+                <!-- ID selection dropdown -->
+                <select v-if="options[index].type == 'id'" v-model="options[index].id" class="h-10">
                     <template v-for="predefined in PREDEFINEDS">
                         <option v-bind:value="predefined.value">
                             {{ predefined.label }}
@@ -124,28 +187,34 @@ const copy = () => {
                     </template>
                 </select>
 
-                <textarea v-model="options[index].text"
-                          placeholder="Custom text">
-                </textarea>
+                <!-- Custom text area -->
+                <textarea v-else v-model="options[index].text"
+                          class="h-10"
+                          placeholder="Enter custom text">
+                    </textarea>
 
-                <textarea v-model="options[index].name"
-                          placeholder="Button name">
-                </textarea>
+                <!-- Row management buttons -->
+                <div class="flex flex-row gap-1 self-center">
+                    <button class="btn primary" title="Move up" :disabled="index == 0"
+                            @click="reorder(index, 'up')">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+                    <button class="btn primary" title="Move down" :disabled="index + 1 == options.length"
+                            @click="reorder(index, 'down')">
+                        <i class="fa-solid fa-arrow-down"></i>
+                    </button>
+                    <button class="btn danger" title="Delete" @click="options.splice(index, 1);">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
 
-                <input v-model="options[index].colour"
-                       type="color"
-                       class="w-full h-full"
-                       placeholder="Button colour"/>
-
-                <button class="btn danger" @click="options.splice(index, 1); results = null;">
-                    <i class="fa-solid fa-trash"></i>
-                    Delete
-                </button>
             </template>
+
         </div>
 
+        <!-- Buttons below the editing area -->
         <div class="mt-3 flex flex-row gap-3 justify-center items-center">
-            <button class="btn primary" @click="options.push({})">
+            <button class="btn primary" @click="options.push({colour: '#45474e', type: 'id', id: ''})">
                 <i class="fa-solid fa-square-plus"></i>
                 New
             </button>
@@ -157,6 +226,7 @@ const copy = () => {
         </div>
     </div>
 
+    <!-- Results area -->
     <div v-if="!!results" class="w-full text-center mt-10">
         <h1 class="text-center mt-3">Replace your Tampermonkey script with this:</h1>
         <textarea v-model="results"
