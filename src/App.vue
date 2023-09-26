@@ -29,7 +29,9 @@ const copied = ref<boolean>(false);
 const parse = () => {
     OPTIONS_REGEX.lastIndex = 0;
 
-    const rawOptions = OPTIONS_REGEX.exec(script.value)?.groups?.options ?? '[]';
+    let rawOptions = OPTIONS_REGEX.exec(script.value)?.groups?.options ?? '[]';
+    rawOptions = rawOptions.replace(/\\'/g, '\'').replace(/\\\\"/g, "\\\"").replace(/\\\\n/g, '\\n');
+
     let parsedOptions;
     try {
         parsedOptions = JSON.parse(rawOptions);
@@ -170,7 +172,7 @@ const updateType = (index: number, event: Event) => {
             Default
         </button>
 
-        <button class="btn danger" @click="reset">
+        <button class="btn danger" @click="reset(); script = '';">
             <i class="fa-solid fa-trash"></i>
             Clear
         </button>
