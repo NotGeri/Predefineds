@@ -13,7 +13,7 @@ type Option = {
 export type Predefined = {
     value: string
     label: string
-}
+};
 
 const script = ref('');
 const error = ref<string | null>(null);
@@ -135,11 +135,9 @@ const reorder = (index: number, direction: 'up' | 'down') => {
  */
 const updateName = (index: number, event: Event) => {
     if (!options.value) return;
-    if (event instanceof InputEvent) {
-        const name = (event.currentTarget as HTMLElement).textContent;
-        if (name != null) {
-            options.value[index].name = name;
-        }
+    const name = (event.currentTarget as HTMLElement).textContent;
+    if (name != null) {
+        options.value[index].name = name;
     }
 };
 
@@ -246,7 +244,7 @@ const updateType = (index: number, event: Event) => {
 
         <!-- Buttons below the editing area -->
         <div class="mt-3 flex flex-row gap-3 justify-center items-center">
-            <button class="btn primary" @click="options.push({colour: '#45474e', type: 'id', id: ''})">
+            <button class="btn primary" @click="options.push({colour: '#45474e', type: 'id', id: '', name: 'Enter a name'})">
                 <i class="fa-solid fa-square-plus"></i>
                 New
             </button>
