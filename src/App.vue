@@ -20,13 +20,16 @@ const error = ref<string | null>(null);
 const options = ref<Array<Option> | null>(null);
 const results = ref<string | null>(null);
 const url = ref<string>('');
+const urlRegex = /\/\/ @include\s*(?<url>.+)/g;
 const copied = ref<boolean>(false);
 
-const fixUrl = () => {
-    let baseUrl: string = url.value ?? '';
-    baseUrl = baseUrl.replace(/\/admin.*/g, '');
-    if (baseUrl?.endsWith('/')) baseUrl = baseUrl?.substring(0, baseUrl?.length - 1);
-    url.value = `${baseUrl}/admin/supporttickets.php*`;
+const fixUrl = (value: string | null = null) => {
+    if (!value) value = url.value;
+    if (!value) return;
+    if (!value.startsWith('http')) return;
+    value = value.replace(/\/admin.*/g, '');
+    if (value?.endsWith('/')) value = value?.substring(0, value?.length - 1);
+    url.value = `${value}/admin/supporttickets.php*`;
 };
 
 /**
@@ -73,7 +76,17 @@ const parse = () => {
 /**
  * Reset all options, results and errors
  */
-const reset = () => {
+const updateScript = (clear: boolean = false) => {
+    if (clear) {
+        script.value = '';
+        url.value = '';
+    } else { // Recalculate
+        urlRegex.lastIndex = 0;
+        const newUrl = urlRegex.exec(script.value)?.groups?.url;
+        if (newUrl) fixUrl(newUrl);
+    }
+
+    // Clear all the errors, values, etc
     error.value = null;
     results.value = null;
     options.value = null;
@@ -164,15 +177,9 @@ const updateType = (index: number, event: Event) => {
 </script>
 
 <template>
-    <h1 class="text-center m-3">Enter your WHMCS url:</h1>
-    <input v-model="url"
-           class="w-full h-10"
-           @blur="fixUrl"
-           placeholder="https://billing.yourhost.tld/admin/supporttickets.php"/>
-
     <h1 class="text-center m-3">Enter your entire existing script:</h1>
     <textarea v-model="script"
-              @change="reset"
+              @change="updateScript()"
               rows="30"
               class="mb-3 w-full"
               placeholder="Paste your existing script here">
@@ -180,13 +187,19 @@ const updateType = (index: number, event: Event) => {
 
     <span v-if="error" class="text-red-400 mb-3">{{ error }}</span>
 
-    <div class="flex flex-row gap-3">
+    <h1 class="text-center m-3">Enter your WHMCS url:</h1>
+    <input v-model="url"
+           class="w-full h-10"
+           @blur="fixUrl()"
+           placeholder="https://billing.yourhost.tld/admin/supporttickets.php"/>
+
+    <div class="flex flex-row gap-3 mt-3">
         <button class="btn primary" @click="script = DEFAULT_SCRIPT?.replace(/%options%/g, '[]');">
             <i class="fa-solid fa-code"></i>
             Default
         </button>
 
-        <button class="btn danger" @click="reset(); script = '';">
+        <button class="btn danger" @click="updateScript(true)">
             <i class="fa-solid fa-trash"></i>
             Clear
         </button>
@@ -234,10 +247,11 @@ const updateType = (index: number, event: Event) => {
                 </select>
 
                 <!-- Custom text area -->
-                <textarea v-else v-model="options[index].text"
+                <textarea v-else
+                          v-model="options[index].text"
                           class="h-10"
                           placeholder="Enter custom text">
-                    </textarea>
+                </textarea>
 
                 <!-- Row management buttons -->
                 <div class="flex flex-row gap-1 self-center">
@@ -260,7 +274,8 @@ const updateType = (index: number, event: Event) => {
 
         <!-- Buttons below the editing area -->
         <div class="mt-3 flex flex-row gap-3 justify-center items-center">
-            <button class="btn primary" @click="options.push({colour: '#45474e', type: 'id', id: '', name: 'Enter a name'})">
+            <button class="btn primary"
+                    @click="options.push({colour: '#45474e', type: 'id', id: '', name: 'Enter a name'})">
                 <i class="fa-solid fa-square-plus"></i>
                 New
             </button>
@@ -278,7 +293,8 @@ const updateType = (index: number, event: Event) => {
         <textarea v-model="results"
                   @change="error = null"
                   rows="30"
-                  class="mt-3 w-full">
+                  readonly
+                  class="mt-3 w-full cursor-text">
         </textarea>
 
         <button class="btn primary mt-3" @click="copy">
