@@ -19,8 +19,15 @@ const script = ref('');
 const error = ref<string | null>(null);
 const options = ref<Array<Option> | null>(null);
 const results = ref<string | null>(null);
-const url = ref<string | null>(null);
+const url = ref<string>('');
 const copied = ref<boolean>(false);
+
+const fixUrl = () => {
+    let baseUrl: string = url.value ?? '';
+    baseUrl = baseUrl.replace(/\/admin.*/g, '');
+    if (baseUrl?.endsWith('/')) baseUrl = baseUrl?.substring(0, baseUrl?.length - 1);
+    url.value = `${baseUrl}/admin/supporttickets.php*`;
+};
 
 /**
  * Parse the script from the top textbox
@@ -78,7 +85,7 @@ const reset = () => {
  */
 const generate = () => {
     if (!options.value) return;
-    
+
     const formattedOptions: Array<Option> = [];
     for (const option of options.value) {
         formattedOptions.push({
@@ -90,10 +97,7 @@ const generate = () => {
         });
     }
 
-    let baseUrl: string = url.value ?? '';
-    if (baseUrl?.endsWith('/')) baseUrl = baseUrl?.substring(0, baseUrl?.length - 1);
-
-    results.value = DEFAULT_SCRIPT.replace(/%url%/g, `${baseUrl}/admin/supporttickets.php*`)
+    results.value = DEFAULT_SCRIPT.replace(/%url%/g, url.value)
         .replace(/%options%/g, JSON.stringify(formattedOptions)
             ?.replace(/'/g, "\\'")
             ?.replace(/\\"/g, '\\\\"')
@@ -163,7 +167,8 @@ const updateType = (index: number, event: Event) => {
     <h1 class="text-center m-3">Enter your WHMCS url:</h1>
     <input v-model="url"
            class="w-full h-10"
-           placeholder="https://billing.yourhost.tld"/>
+           @blur="fixUrl"
+           placeholder="https://billing.yourhost.tld/admin/supporttickets.php"/>
 
     <h1 class="text-center m-3">Enter your entire existing script:</h1>
     <textarea v-model="script"

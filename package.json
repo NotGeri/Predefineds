@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "run-p rollup type-check build-only",
+    "deploy": "run-p build",
     "preview": "vite preview",
     "rollup": "npx rollup -c rollup/config.ts",
     "build-only": "vite build",
