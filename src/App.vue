@@ -35,7 +35,6 @@ const urlWarning = ref<{ message?: string, fix?: string } | null>(null);
  */
 const validateUrl = (value: string | null = null, attemptedFix: boolean = false) => {
     if (!value) value = url.value;
-    else url.value = value;
 
     if (!value) {
         urlWarning.value = {message: 'Please enter a url'};
@@ -43,7 +42,8 @@ const validateUrl = (value: string | null = null, attemptedFix: boolean = false)
     }
 
     // Remove any queries
-    value = value.replace(new RegExp(`/(?<=${expectedPage}).*`, 'g'), '');
+    value = value.replace(new RegExp(`(?<=\/${expectedPage}).*`, 'g'), '');
+    url.value = value;
 
     // See if it's the expected page
     if (!value?.endsWith(expectedPage)) {
@@ -341,8 +341,10 @@ const updateType = (index: number, event: Event) => {
     <div v-if="!!results" class="w-full text-center mt-10">
         <h1 class="text-center mt-3">Replace your Tampermonkey script with this:</h1>
         <p>The following script will only work at
-            <span class="italic text-green-400 mr-2"> {{ url }}</span>
-            <a :href="url" class="text-white" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+            <a :href="url" class="text-white" target="_blank">
+                <span class="italic text-green-400 mr-2">{{ url }}</span>
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
         </p>
         <textarea v-model="results"
                   @change="error = null"
