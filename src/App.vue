@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {ref} from 'vue';
-import {DEFAULT_SCRIPT, OPTIONS_REGEX, PREDEFINEDS} from '@/config';
+import {DEFAULT_SCRIPT, OPTIONS_REGEX, PREDEFINEDS, URL_SCRIPT_REGEX} from '@/config';
 
 type Option = {
     id?: string
@@ -19,17 +19,58 @@ const script = ref('');
 const error = ref<string | null>(null);
 const options = ref<Array<Option> | null>(null);
 const results = ref<string | null>(null);
-const url = ref<string>('');
-const urlRegex = /\/\/ @include\s*(?<url>.+)/g;
 const copied = ref<boolean>(false);
 
-const fixUrl = (value: string | null = null) => {
+const expectedPage = 'supporttickets.php';
+const urlFormat = `http(s)://endpoint/<admin directory>/${expectedPage}`;
+const url = ref<string>('');
+const urlRegex = /(?<protocol>https?):\/\/(?<domain>(?:[a-z0-9|-]+\.)*[a-z0-9|-]+\.[a-z]+)\/(?<directories>.+\/)*(?<page>[a-zA-Z0-9.*]*)(?<query>\?.*)?/gi;
+const urlWarning = ref<{ message?: string, fix?: string } | null>(null);
+
+/**
+ * Attempt to validate a WHMCS url
+ * If it's invalid, try to parse and fix it
+ * @param value
+ * @param attemptedFix Whether a fix has already been attempted
+ */
+const validateUrl = (value: string | null = null, attemptedFix: boolean = false) => {
     if (!value) value = url.value;
-    if (!value) return;
-    if (!value.startsWith('http')) return;
-    value = value.replace(/\/admin.*/g, '');
-    if (value?.endsWith('/')) value = value?.substring(0, value?.length - 1);
-    url.value = `${value}/admin/supporttickets.php*`;
+    else url.value = value;
+
+    if (!value) {
+        urlWarning.value = {message: 'Please enter a url'};
+        return;
+    }
+
+    // Remove any queries
+    value = value.replace(new RegExp(`/(?<=${expectedPage}).*`, 'g'), '');
+
+    // See if it's the expected page
+    if (!value?.endsWith(expectedPage)) {
+
+        let fix = undefined;
+        if (!attemptedFix) {
+            // If not, try to parse the url's domain, directory, etc
+            // and fix any missing ones with the default
+            urlRegex.lastIndex = 0;
+            let {protocol, domain, directories, page} = urlRegex.exec(value)?.groups ?? {};
+            console.log(protocol, domain, directories, page)
+            if (!directories || directories.length < 3) directories = 'admin';
+            if (!page || page.length < 3) page = expectedPage;
+            if (protocol && domain && directories && page) {
+                if (directories.endsWith('/')) directories = directories.substring(0, directories.length - 1);
+                fix = `${protocol}://${domain}/${directories}/${page}`;
+            }
+        }
+
+        urlWarning.value = {
+            message: `The url should ideally be ${urlFormat}`,
+            fix
+        };
+        return;
+    }
+
+    urlWarning.value = null;
 };
 
 /**
@@ -81,9 +122,9 @@ const updateScript = (clear: boolean = false) => {
         script.value = '';
         url.value = '';
     } else { // Recalculate
-        urlRegex.lastIndex = 0;
-        const newUrl = urlRegex.exec(script.value)?.groups?.url;
-        if (newUrl) fixUrl(newUrl);
+        URL_SCRIPT_REGEX.lastIndex = 0;
+        const newUrl = URL_SCRIPT_REGEX.exec(script.value)?.groups?.url;
+        if (newUrl) validateUrl(newUrl);
     }
 
     // Clear all the errors, values, etc
@@ -110,7 +151,7 @@ const generate = () => {
         });
     }
 
-    results.value = DEFAULT_SCRIPT.replace(/%url%/g, url.value)
+    results.value = DEFAULT_SCRIPT.replace(/%url%/g, `${url.value}*`)
         .replace(/%options%/g, JSON.stringify(formattedOptions)
             ?.replace(/'/g, "\\'")
             ?.replace(/\\"/g, '\\\\"')
@@ -185,13 +226,22 @@ const updateType = (index: number, event: Event) => {
               placeholder="Paste your existing script here">
     </textarea>
 
-    <span v-if="error" class="text-red-400 mb-3">{{ error }}</span>
+    <span v-if="error" class="text-red-400 mt-3">{{ error }}</span>
 
     <h1 class="text-center m-3">Enter your WHMCS url:</h1>
     <input v-model="url"
            class="w-full h-10"
-           @blur="fixUrl()"
-           placeholder="https://billing.yourhost.tld/admin/supporttickets.php"/>
+           @blur="validateUrl()"
+           @change="urlWarning = null"
+           :placeholder="urlFormat"/>
+
+    <span v-if="urlWarning" class="text-orange-400 mt-3">
+        {{ urlWarning.message }}
+    </span>
+    <button v-if="urlWarning && urlWarning.fix" class="btn success mt-3 mb-5"
+            @click="validateUrl(urlWarning.fix, true)">
+        <i class="fa-solid fa-wrench"></i> Attempt To Fix
+    </button>
 
     <div class="flex flex-row gap-3 mt-3">
         <button class="btn primary" @click="script = DEFAULT_SCRIPT?.replace(/%options%/g, '[]');">
@@ -204,7 +254,7 @@ const updateType = (index: number, event: Event) => {
             Clear
         </button>
 
-        <button class="btn success" @click="parse" :disabled="!script">
+        <button class="btn success" @click="parse" :disabled="!script || !url">
             <i class="fa-solid fa-gears"></i>
             Go!
         </button>
@@ -290,6 +340,10 @@ const updateType = (index: number, event: Event) => {
     <!-- Results area -->
     <div v-if="!!results" class="w-full text-center mt-10">
         <h1 class="text-center mt-3">Replace your Tampermonkey script with this:</h1>
+        <p>The following script will only work at
+            <span class="italic text-green-400 mr-2"> {{ url }}</span>
+            <a :href="url" class="text-white" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+        </p>
         <textarea v-model="results"
                   @change="error = null"
                   rows="30"
