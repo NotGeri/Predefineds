@@ -145,6 +145,16 @@ const newOption = () => {
     };
 
     options.value.push(option);
+    updateIndexes();
+};
+
+/**
+ * Delete an option
+ */
+const deleteOption = (index: number) => {
+    if (!options.value) return;
+    options.value.splice(index, 1);
+    updateIndexes();
 };
 
 /**
@@ -398,7 +408,7 @@ const updateType = (index: number, event: Event) => {
                             @click="clone(index)">
                         <i class="fa-solid fa-clone"></i>
                     </button>
-                    <button class="btn danger" title="Delete" @click="options.splice(index, 1);">
+                    <button class="btn danger" title="Delete" @click="deleteOption(index)">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
