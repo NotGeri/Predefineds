@@ -199,10 +199,11 @@ const clone = (index: number) => {
         uuid: crypto.randomUUID()
     };
     options.value = [
-        ...options.value.slice(0, index),
+        ...options.value.slice(0, index + 1),
         newOption,
-        ...options.value.slice(index)
+        ...options.value.slice(index + 1)
     ];
+    updateIndexes();
 };
 
 /**
