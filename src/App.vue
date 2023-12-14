@@ -3,6 +3,7 @@ import {ref} from 'vue';
 import {DEFAULT_SCRIPT, OPTIONS_REGEX, PREDEFINEDS, URL_SCRIPT_REGEX} from '@/config';
 
 type Option = {
+    uuid: string
     index?: number
     id?: string
     text?: string
@@ -55,7 +56,6 @@ const validateUrl = (value: string | null = null, attemptedFix: boolean = false)
             // and fix any missing ones with the default
             urlRegex.lastIndex = 0;
             let {protocol, domain, directories, page} = urlRegex.exec(value)?.groups ?? {};
-            console.log(protocol, domain, directories, page)
             if (!directories || directories.length < 3) directories = 'admin';
             if (!page || page.length < 3) page = expectedPage;
             if (protocol && domain && directories && page) {
@@ -81,7 +81,6 @@ const validateUrl = (value: string | null = null, attemptedFix: boolean = false)
 const updateIndexes = () => {
     if (!options.value) return;
     for (const [index, option] of options.value.entries()) {
-        console.log(index, option)
         options.value[index].index = index + 1;
     }
 };
@@ -122,6 +121,9 @@ const parse = () => {
                 option.colour += '0';
             }
         }
+
+        // If there isn't an ID, create one now
+        if (!option.uuid) option.uuid = crypto.randomUUID();
 
         options.value.push(option);
     }
@@ -192,7 +194,10 @@ const copy = () => {
  */
 const clone = (index: number) => {
     if (!options.value) return;
-    const newOption = {...options.value[index]};
+    const newOption: Option = {
+        ...options.value[index],
+        uuid: crypto.randomUUID()
+    };
     options.value = [
         ...options.value.slice(0, index),
         newOption,
@@ -309,12 +314,14 @@ const updateType = (index: number, event: Event) => {
 
     <div v-if="options">
         <div
-            class="mt-10 grid grid-cols-[5fr_10fr_5fr_5fr_65fr_10fr] gap-x-7 gap-y-10 text-center justify-items-center items-center whitespace-nowrap">
+            class="mt-10 grid grid-cols-[5fr_10fr_5fr_5fr_65fr_10fr] gap-x-7 gap-y-10 text-center justify-items-center items-center whitespace-nowrap"
+            v-auto-animate
+        >
             <template v-for="header in ['', 'Name', 'Colour', 'Custom', 'Content', '']">
                 <h3 v-if="options.length > 0">{{ header }}</h3>
             </template>
 
-            <template v-for="(option, index) in options" :key="index">
+            <template v-for="(option, index) in options" :key="option.uuid">
                 <div class="flex flex-col gap-1">
                     <button class="btn primary" title="Move up" :disabled="index == 0"
                             @click="reorder(index, 'up')">
