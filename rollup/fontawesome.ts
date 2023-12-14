@@ -3,6 +3,7 @@ import {
     faArrowDown,
     faArrowUp,
     faArrowUpRightFromSquare,
+    faClone,
     faCode,
     faCopy,
     faGears,
@@ -12,7 +13,7 @@ import {
     faWrench
 } from '@fortawesome/free-solid-svg-icons';
 
-library.add(faSquarePlus, faArrowUpRightFromSquare, faWrench, faRetweet, faCode, faTrash, faGears, faCopy, faArrowDown, faArrowUp);
+library.add(faSquarePlus, faArrowUpRightFromSquare, faWrench, faRetweet, faCode, faTrash, faGears, faCopy, faArrowDown, faArrowUp, faClone);
 
 window.addEventListener('DOMContentLoaded', () => {
     dom.i2svg();

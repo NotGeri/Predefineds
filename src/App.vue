@@ -173,6 +173,20 @@ const copy = () => {
 };
 
 /**
+ * Clone an option after itself
+ * @param index
+ */
+const clone = (index: number) => {
+    if (!options.value) return;
+    const newOption = {...options.value[index]};
+    options.value = [
+        ...options.value.slice(0, index),
+        newOption,
+        ...options.value.slice(index)
+    ];
+};
+
+/**
  * Reorder an option
  * @param index The index of the option
  * @param direction The direction to reorder it in
@@ -305,6 +319,10 @@ const updateType = (index: number, event: Event) => {
 
                 <!-- Row management buttons -->
                 <div class="flex flex-row gap-1 self-center">
+                    <button class="btn success" title="Duplicate"
+                            @click="clone(index)">
+                        <i class="fa-solid fa-clone"></i>
+                    </button>
                     <button class="btn primary" title="Move up" :disabled="index == 0"
                             @click="reorder(index, 'up')">
                         <i class="fa-solid fa-arrow-up"></i>
