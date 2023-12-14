@@ -3,6 +3,7 @@ import {ref} from 'vue';
 import {DEFAULT_SCRIPT, OPTIONS_REGEX, PREDEFINEDS, URL_SCRIPT_REGEX} from '@/config';
 
 type Option = {
+    index?: number
     id?: string
     text?: string
     name?: string
@@ -74,6 +75,18 @@ const validateUrl = (value: string | null = null, attemptedFix: boolean = false)
 };
 
 /**
+ * Updates the indexes of each entry in the options array
+ * to match their actual position
+ */
+const updateIndexes = () => {
+    if (!options.value) return;
+    for (const [index, option] of options.value.entries()) {
+        console.log(index, option)
+        options.value[index].index = index + 1;
+    }
+};
+
+/**
  * Parse the script from the top textbox
  * We only really care about the options, so we'll
  * grab them with regex and parse them as JSON
@@ -112,6 +125,7 @@ const parse = () => {
 
         options.value.push(option);
     }
+    updateIndexes();
 };
 
 /**
@@ -191,19 +205,38 @@ const clone = (index: number) => {
  * @param index The index of the option
  * @param direction The direction to reorder it in
  */
-const reorder = (index: number, direction: 'up' | 'down') => {
+const reorder = (index: number, direction: 'up' | 'down' | 'jump') => {
     if (!options.value) return;
-    if (direction == 'up') {
-        if (index <= 0) return; // Check for the first element
-        const temp = options.value[index];
-        options.value[index] = options.value[index - 1];
-        options.value[index - 1] = temp;
-    } else {
-        if (index >= options.value.length - 1) return; // Check for the last element
-        const temp = options.value[index];
-        options.value[index] = options.value[index + 1];
-        options.value[index + 1] = temp;
+
+    switch (direction) {
+        case 'jump': {
+            const option = options.value[index];
+            const newIndex = option.index ? option.index - 1 : 0;
+            if (!(newIndex < 0 || newIndex >= options.value.length || newIndex === index)) {
+                options.value.splice(index, 1);
+                options.value.splice(newIndex, 0, option);
+            }
+            break;
+        }
+
+        case 'up': {
+            if (index <= 0) return; // Check for the first element
+            const temp = options.value[index];
+            options.value[index] = options.value[index - 1];
+            options.value[index - 1] = temp;
+            break;
+        }
+
+        case 'down': {
+            if (index >= options.value.length - 1) return; // Check for the last element
+            const temp = options.value[index];
+            options.value[index] = options.value[index + 1];
+            options.value[index + 1] = temp;
+            break;
+        }
     }
+
+    updateIndexes();
 };
 
 /**
@@ -276,12 +309,29 @@ const updateType = (index: number, event: Event) => {
 
     <div v-if="options">
         <div
-            class="mt-10 grid grid-cols-[10fr_5fr_5fr_65fr_10fr] gap-x-7 gap-y-10 text-center justify-items-center items-center whitespace-nowrap">
-            <template v-for="header in ['Name', 'Colour', 'Custom', 'Content', '']">
+            class="mt-10 grid grid-cols-[5fr_10fr_5fr_5fr_65fr_10fr] gap-x-7 gap-y-10 text-center justify-items-center items-center whitespace-nowrap">
+            <template v-for="header in ['', 'Name', 'Colour', 'Custom', 'Content', '']">
                 <h3 v-if="options.length > 0">{{ header }}</h3>
             </template>
 
             <template v-for="(option, index) in options" :key="index">
+                <div class="flex flex-col gap-1">
+                    <button class="btn primary" title="Move up" :disabled="index == 0"
+                            @click="reorder(index, 'up')">
+                        <i class="fa-solid fa-arrow-up"></i>
+                    </button>
+
+                    <input type="text"
+                           v-model.number="options[index].index"
+                           @keydown.enter="reorder(index, 'jump')"
+                           class="w-8 aspect-square text-center">
+
+                    <button class="btn primary" title="Move down" :disabled="index + 1 == options.length"
+                            @click="reorder(index, 'down')">
+                        <i class="fa-solid fa-arrow-down"></i>
+                    </button>
+                </div>
+
                 <span contenteditable
                       class="btn btn-secondary w-max pr-3 pl-3 h-10 leading-7 whitespace-pre max-w-xs overflow-hidden"
                       :style="{'background-color': options[index].colour}"
@@ -322,14 +372,6 @@ const updateType = (index: number, event: Event) => {
                     <button class="btn success" title="Duplicate"
                             @click="clone(index)">
                         <i class="fa-solid fa-clone"></i>
-                    </button>
-                    <button class="btn primary" title="Move up" :disabled="index == 0"
-                            @click="reorder(index, 'up')">
-                        <i class="fa-solid fa-arrow-up"></i>
-                    </button>
-                    <button class="btn primary" title="Move down" :disabled="index + 1 == options.length"
-                            @click="reorder(index, 'down')">
-                        <i class="fa-solid fa-arrow-down"></i>
                     </button>
                     <button class="btn danger" title="Delete" @click="options.splice(index, 1);">
                         <i class="fa-solid fa-trash"></i>
